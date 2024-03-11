@@ -1,0 +1,611 @@
+Resources:
+  RawImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub raw-images-${AWS::AccountId}
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  RawImagesBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RawImagesBucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt RawImagesBucket.Arn
+              - !Sub ${RawImagesBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  CutOutImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub cut-out-images-${AWS::AccountId}
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  CutOutImagesBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CutOutImagesBucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt CutOutImagesBucket.Arn
+              - !Sub ${CutOutImagesBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  GetSignedUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: GetSignedUrlFunction
+      CodeUri: src/signed
+      Handler: index.handler
+      Runtime: nodejs20.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          CUTOUTIMAGESBUCKET_BUCKET_NAME: !Ref CutOutImagesBucket
+          CUTOUTIMAGESBUCKET_BUCKET_ARN: !GetAtt CutOutImagesBucket.Arn
+          RAWIMAGESBUCKET_BUCKET_NAME: !Ref RawImagesBucket
+          RAWIMAGESBUCKET_BUCKET_ARN: !GetAtt RawImagesBucket.Arn
+          CROPPEDIMAGESBUCKET_BUCKET_NAME: !Ref CroppedImagesBucket
+          CROPPEDIMAGESBUCKET_BUCKET_ARN: !GetAtt CroppedImagesBucket.Arn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectAcl
+                - s3:GetObjectLegalHold
+                - s3:GetObjectRetention
+                - s3:GetObjectTorrent
+                - s3:GetObjectVersion
+                - s3:GetObjectVersionAcl
+                - s3:GetObjectVersionForReplication
+                - s3:GetObjectVersionTorrent
+                - s3:ListBucket
+                - s3:ListBucketMultipartUploads
+                - s3:ListBucketVersions
+                - s3:ListMultipartUploadParts
+                - s3:AbortMultipartUpload
+                - s3:DeleteObject
+                - s3:DeleteObjectVersion
+                - s3:PutObject
+                - s3:PutObjectLegalHold
+                - s3:PutObjectRetention
+                - s3:RestoreObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::${CutOutImagesBucket}
+                - !Sub arn:${AWS::Partition}:s3:::${CutOutImagesBucket}/*
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectAcl
+                - s3:GetObjectLegalHold
+                - s3:GetObjectRetention
+                - s3:GetObjectTorrent
+                - s3:GetObjectVersion
+                - s3:GetObjectVersionAcl
+                - s3:GetObjectVersionForReplication
+                - s3:GetObjectVersionTorrent
+                - s3:ListBucket
+                - s3:ListBucketMultipartUploads
+                - s3:ListBucketVersions
+                - s3:ListMultipartUploadParts
+                - s3:AbortMultipartUpload
+                - s3:DeleteObject
+                - s3:DeleteObjectVersion
+                - s3:PutObject
+                - s3:PutObjectLegalHold
+                - s3:PutObjectRetention
+                - s3:RestoreObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::${CroppedImagesBucket}
+                - !Sub arn:${AWS::Partition}:s3:::${CroppedImagesBucket}/*
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectAcl
+                - s3:GetObjectLegalHold
+                - s3:GetObjectRetention
+                - s3:GetObjectTorrent
+                - s3:GetObjectVersion
+                - s3:GetObjectVersionAcl
+                - s3:GetObjectVersionForReplication
+                - s3:GetObjectVersionTorrent
+                - s3:ListBucket
+                - s3:ListBucketMultipartUploads
+                - s3:ListBucketVersions
+                - s3:ListMultipartUploadParts
+                - s3:AbortMultipartUpload
+                - s3:DeleteObject
+                - s3:DeleteObjectVersion
+                - s3:PutObject
+                - s3:PutObjectLegalHold
+                - s3:PutObjectRetention
+                - s3:RestoreObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::${RawImagesBucket}
+                - !Sub arn:${AWS::Partition}:s3:::${RawImagesBucket}/*
+  GetSignedUrlFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetSignedUrlFunction}
+  NewImageToBeCutOutRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref RawImagesBucket
+      Targets:
+        - Id: !GetAtt CutOutStateMachine.Name
+          Arn: !Ref CutOutStateMachine
+          RoleArn: !GetAtt NewImageToBeCutOutRuleToCutOutStateMachineRole.Arn
+  NewImageToBeCroppedRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref CutOutImagesBucket
+      Targets:
+        - Id: !GetAtt CropStateMachine.Name
+          Arn: !Ref CropStateMachine
+          RoleArn: !GetAtt NewImageToBeCroppedRuleToCropStateMachineRole.Arn
+  AdobeConnection:
+    Type: AWS::Events::Connection
+    Properties:
+      AuthorizationType: OAUTH_CLIENT_CREDENTIALS
+      AuthParameters:
+        OAuthParameters:
+          AuthorizationEndpoint: https://ims-na1.adobelogin.com/ims/token/v3
+          ClientParameters:
+            ClientID: '{{resolve:secretsmanager:aip/oauth:SecretString:client_id}}'
+            ClientSecret: '{{resolve:secretsmanager:aip/oauth:SecretString:client_secret}}'
+          HttpMethod: POST
+          OAuthHttpParameters:
+            BodyParameters:
+              - IsValueSecret: false
+                Key: grant_type
+                Value: client_credentials
+              - IsValueSecret: false
+                Key: scope
+                Value: openid, AdobeID, read_organizations
+        InvocationHttpParameters:
+          HeaderParameters:
+            - IsValueSecret: true
+              Key: x-api-key
+              Value: '{{resolve:secretsmanager:aip/oauth:SecretString:client_id}}'
+            - IsValueSecret: true
+              Key: x-gw-ims-org-id
+              Value: '{{resolve:secretsmanager:aip/oauth:SecretString:org_id}}'
+  SmartCropStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt SmartCropStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - RekognitionDetectOnlyPolicy: {}
+        - S3FullAccessPolicy:
+            BucketName: !Ref CroppedImagesBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+        - LambdaInvokePolicy:
+            FunctionName: !Ref SmartCropFunction
+      Tracing:
+        Enabled: true
+      Type: STANDARD
+      DefinitionSubstitutions:
+        ImageFunction: !GetAtt SmartCropFunction.Arn
+      DefinitionUri: workflows/smartcrop.asl.json
+  SmartCropStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: SmartCropStateMachine
+  SmartCropFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: SmartCropFunction
+      CodeUri: src/smartcrop
+      Handler: handler.handler
+      Runtime: python3.12
+      MemorySize: 3008
+      Timeout: 60
+      Tracing: Active
+      Environment:
+        Variables:
+          SMARTCROPPEDIMAGESBUCKET_BUCKET_NAME: !Ref SmartCroppedImagesBucket
+          SMARTCROPPEDIMAGESBUCKET_BUCKET_ARN: !GetAtt SmartCroppedImagesBucket.Arn
+          CROPPEDIMAGESBUCKET_BUCKET_NAME: !Ref CroppedImagesBucket
+          CROPPEDIMAGESBUCKET_BUCKET_ARN: !GetAtt CroppedImagesBucket.Arn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectAcl
+                - s3:GetObjectLegalHold
+                - s3:GetObjectRetention
+                - s3:GetObjectTorrent
+                - s3:GetObjectVersion
+                - s3:GetObjectVersionAcl
+                - s3:GetObjectVersionForReplication
+                - s3:GetObjectVersionTorrent
+                - s3:ListBucket
+                - s3:ListBucketMultipartUploads
+                - s3:ListBucketVersions
+                - s3:ListMultipartUploadParts
+                - s3:AbortMultipartUpload
+                - s3:DeleteObject
+                - s3:DeleteObjectVersion
+                - s3:PutObject
+                - s3:PutObjectLegalHold
+                - s3:PutObjectRetention
+                - s3:RestoreObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::${SmartCroppedImagesBucket}
+                - !Sub arn:${AWS::Partition}:s3:::${SmartCroppedImagesBucket}/*
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectAcl
+                - s3:GetObjectLegalHold
+                - s3:GetObjectRetention
+                - s3:GetObjectTorrent
+                - s3:GetObjectVersion
+                - s3:GetObjectVersionAcl
+                - s3:GetObjectVersionForReplication
+                - s3:GetObjectVersionTorrent
+                - s3:ListBucket
+                - s3:ListBucketMultipartUploads
+                - s3:ListBucketVersions
+                - s3:ListMultipartUploadParts
+                - s3:AbortMultipartUpload
+                - s3:DeleteObject
+                - s3:DeleteObjectVersion
+                - s3:PutObject
+                - s3:PutObjectLegalHold
+                - s3:PutObjectRetention
+                - s3:RestoreObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::${CroppedImagesBucket}
+                - !Sub arn:${AWS::Partition}:s3:::${CroppedImagesBucket}/*
+      Architectures:
+        - arm64
+  SmartCropFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${SmartCropFunction}
+  CroppedImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub cropped-images-${AWS::AccountId}
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  CroppedImagesBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CroppedImagesBucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt CroppedImagesBucket.Arn
+              - !Sub ${CroppedImagesBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  SmartCroppedImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub smart-cropped-images-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  SmartCroppedImagesBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SmartCroppedImagesBucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt SmartCroppedImagesBucket.Arn
+              - !Sub ${SmartCroppedImagesBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  CropStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt CropStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+                - states:InvokeHTTPEndpoint
+                - events:RetrieveConnectionCredentials
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource: '*'
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetSignedUrlFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetSignedUrlFunction
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        croppedImages: !Ref CroppedImagesBucket
+        getSignedUrl: !GetAtt GetSignedUrlFunction.Arn
+        adobeConnection: !GetAtt AdobeConnection.Arn
+      DefinitionUri: workflows/cutout.asl.json
+  CropStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: CropStateMachine
+  NewImageToBeCroppedRuleToCropStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: !Sub events.${AWS::URLSuffix}
+          Action: sts:AssumeRole
+          Condition:
+            ArnLike:
+              aws:SourceArn: !Sub
+                - arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-${ResourceId}-*
+                - ResourceId: NewImageToBeCroppedRule
+  NewImageToBeCroppedRuleToCropStateMachineConnector:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !Ref CropStateMachine
+        Version: '2012-10-17'
+      Roles:
+        - !Ref NewImageToBeCroppedRuleToCropStateMachineRole
+  CutOutStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt CutOutStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+                - states:InvokeHTTPEndpoint
+                - events:RetrieveConnectionCredentials
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource: '*'
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetSignedUrlFunction
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        cutoutImages: !Ref CutOutImagesBucket
+        getSignedUrl: !GetAtt GetSignedUrlFunction.Arn
+        adobeConnection: !GetAtt AdobeConnection.Arn
+      DefinitionUri: workflows/crop.asl.json
+  CutOutStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: CutOutStateMachine
+  NewImageToBeCutOutRuleToCutOutStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: !Sub events.${AWS::URLSuffix}
+          Action: sts:AssumeRole
+          Condition:
+            ArnLike:
+              aws:SourceArn: !Sub
+                - arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-${ResourceId}-*
+                - ResourceId: NewImageToBeCutOutRule
+  NewImageToBeCutOutRuleToCutOutStateMachineConnector:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !Ref CutOutStateMachine
+        Version: '2012-10-17'
+      Roles:
+        - !Ref NewImageToBeCutOutRuleToCutOutStateMachineRole
+  NewImageToBeSmartCropped:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref CroppedImagesBucket
+      Targets:
+        - Id: !GetAtt SmartCropStateMachine.Name
+          Arn: !Ref SmartCropStateMachine
+          RoleArn: !GetAtt NewImageToBeSmartCroppedToSmartCropStateMachineRole.Arn
+  NewImageToBeSmartCroppedToSmartCropStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: !Sub events.${AWS::URLSuffix}
+          Action: sts:AssumeRole
+          Condition:
+            ArnLike:
+              aws:SourceArn: !Sub
+                - arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-${ResourceId}-*
+                - ResourceId: NewImageToBeSmartCropped
+  NewImageToBeSmartCroppedToSmartCropStateMachineConnector:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !Ref SmartCropStateMachine
+        Version: '2012-10-17'
+      Roles:
+        - !Ref NewImageToBeSmartCroppedToSmartCropStateMachineRole
+Transform: AWS::Serverless-2016-10-31
+Outputs:
+  RawImagesBucketName:
+    Description: Name of the raw image bucket
+    Value: !Ref RawImagesBucket
+  CutOutImagesBucketName:
+    Description: Name of the cut out image bucket
+    Value: !Ref CutOutImagesBucket
+  CroppedImagesBucketName:
+    Description: Name of the cropped image bucket
+    Value: !Ref CroppedImagesBucket
+  SmartCroppedImagesBucketName:
+    Description: Name of the smart cropped image bucket
+    Value: !Ref SmartCroppedImagesBucket

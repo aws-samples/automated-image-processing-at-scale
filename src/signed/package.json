@@ -1,0 +1,8 @@
+{
+  "name": "function",
+  "version": "1.0.0",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.502.0",
+    "@aws-sdk/s3-request-presigner": "^3.502.0"
+  }
+}
