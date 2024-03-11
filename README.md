@@ -1,4 +1,4 @@
-# Automated image processing with AWS and Adobe
+# Automated image processing at scale
 This application uses AWS Serverless and Adobe API endpoints to automate image manipulation at scale. It was designed to process player photos for sporting industries but can be modified for many other uses. When images are dropped into the raw-image bucket they are sent to Adobe to have the background removed and run an auto crop process to reduce the image to just the subject. We then use Rekognition to identify the face of the player and crop the photo according to the desired height of the body. The result is uniform sizing across all the images.
 
 The entire process is event driven. When images are furst dropped in the RawImagesBucket, this triggers the CutOutStateMachine to call the Adobe API to process the image. The updated image is then dropped in the CutOutImagesBucket which triggers the next step and so on.
