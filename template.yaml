@@ -1,3 +1,8 @@
+Parameters:
+  AdobeConnectionArn:
+    Type: String
+    Description: The ARN of the Adobe Connection
+
 Resources:
   RawImagesBucket:
     Type: AWS::S3::Bucket
@@ -201,33 +206,6 @@ Resources:
         - Id: !GetAtt CropStateMachine.Name
           Arn: !Ref CropStateMachine
           RoleArn: !GetAtt NewImageToBeCroppedRuleToCropStateMachineRole.Arn
-  AdobeConnection:
-    Type: AWS::Events::Connection
-    Properties:
-      AuthorizationType: OAUTH_CLIENT_CREDENTIALS
-      AuthParameters:
-        OAuthParameters:
-          AuthorizationEndpoint: https://ims-na1.adobelogin.com/ims/token/v3
-          ClientParameters:
-            ClientID: '{{resolve:secretsmanager:aip/oauth:SecretString:client_id}}'
-            ClientSecret: '{{resolve:secretsmanager:aip/oauth:SecretString:client_secret}}'
-          HttpMethod: POST
-          OAuthHttpParameters:
-            BodyParameters:
-              - IsValueSecret: false
-                Key: grant_type
-                Value: client_credentials
-              - IsValueSecret: false
-                Key: scope
-                Value: openid, AdobeID, read_organizations
-        InvocationHttpParameters:
-          HeaderParameters:
-            - IsValueSecret: true
-              Key: x-api-key
-              Value: '{{resolve:secretsmanager:aip/oauth:SecretString:client_id}}'
-            - IsValueSecret: true
-              Key: x-gw-ims-org-id
-              Value: '{{resolve:secretsmanager:aip/oauth:SecretString:org_id}}'
   SmartCropStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
@@ -444,7 +422,7 @@ Resources:
       DefinitionSubstitutions:
         croppedImages: !Ref CroppedImagesBucket
         getSignedUrl: !GetAtt GetSignedUrlFunction.Arn
-        adobeConnection: !GetAtt AdobeConnection.Arn
+        adobeConnection: !Ref AdobeConnectionArn
       DefinitionUri: workflows/cutout.asl.json
   CropStateMachineLogGroup:
     Type: AWS::Logs::LogGroup
@@ -515,7 +493,7 @@ Resources:
       DefinitionSubstitutions:
         cutoutImages: !Ref CutOutImagesBucket
         getSignedUrl: !GetAtt GetSignedUrlFunction.Arn
-        adobeConnection: !GetAtt AdobeConnection.Arn
+        adobeConnection: !Ref AdobeConnectionArn
       DefinitionUri: workflows/crop.asl.json
   CutOutStateMachineLogGroup:
     Type: AWS::Logs::LogGroup
