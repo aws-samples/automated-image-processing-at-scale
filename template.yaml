@@ -2,7 +2,6 @@ Parameters:
   AdobeConnectionArn:
     Type: String
     Description: The ARN of the Adobe Connection
-
 Resources:
   RawImagesBucket:
     Type: AWS::S3::Bucket
@@ -206,6 +205,9 @@ Resources:
         - Id: !GetAtt CropStateMachine.Name
           Arn: !Ref CropStateMachine
           RoleArn: !GetAtt NewImageToBeCroppedRuleToCropStateMachineRole.Arn
+        - Id: !GetAtt SmartCropStateMachine.Name
+          Arn: !Ref SmartCropStateMachine
+          RoleArn: !GetAtt NewImageToBeCroppedRuleToSmartCropStateMachineRole.Arn
   SmartCropStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
@@ -219,7 +221,7 @@ Resources:
         - AWSXrayWriteOnlyAccess
         - RekognitionDetectOnlyPolicy: {}
         - S3FullAccessPolicy:
-            BucketName: !Ref CroppedImagesBucket
+            BucketName: !Ref CutOutImagesBucket
         - Statement:
             - Effect: Allow
               Action:
@@ -262,8 +264,8 @@ Resources:
         Variables:
           SMARTCROPPEDIMAGESBUCKET_BUCKET_NAME: !Ref SmartCroppedImagesBucket
           SMARTCROPPEDIMAGESBUCKET_BUCKET_ARN: !GetAtt SmartCroppedImagesBucket.Arn
-          CROPPEDIMAGESBUCKET_BUCKET_NAME: !Ref CroppedImagesBucket
-          CROPPEDIMAGESBUCKET_BUCKET_ARN: !GetAtt CroppedImagesBucket.Arn
+          CUTOUTIMAGESBUCKET_BUCKET_NAME: !Ref CutOutImagesBucket
+          CUTOUTIMAGESBUCKET_BUCKET_ARN: !GetAtt CutOutImagesBucket.Arn
       Policies:
         - Statement:
             - Effect: Allow
@@ -315,8 +317,8 @@ Resources:
                 - s3:PutObjectRetention
                 - s3:RestoreObject
               Resource:
-                - !Sub arn:${AWS::Partition}:s3:::${CroppedImagesBucket}
-                - !Sub arn:${AWS::Partition}:s3:::${CroppedImagesBucket}/*
+                - !Sub arn:${AWS::Partition}:s3:::${CutOutImagesBucket}
+                - !Sub arn:${AWS::Partition}:s3:::${CutOutImagesBucket}/*
       Architectures:
         - arm64
   SmartCropFunctionLogGroup:
@@ -541,11 +543,7 @@ Resources:
           bucket:
             name:
               - !Ref CroppedImagesBucket
-      Targets:
-        - Id: !GetAtt SmartCropStateMachine.Name
-          Arn: !Ref SmartCropStateMachine
-          RoleArn: !GetAtt NewImageToBeSmartCroppedToSmartCropStateMachineRole.Arn
-  NewImageToBeSmartCroppedToSmartCropStateMachineRole:
+  NewImageToBeCroppedRuleToSmartCropStateMachineRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -559,8 +557,8 @@ Resources:
             ArnLike:
               aws:SourceArn: !Sub
                 - arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-${ResourceId}-*
-                - ResourceId: NewImageToBeSmartCropped
-  NewImageToBeSmartCroppedToSmartCropStateMachineConnector:
+                - ResourceId: NewImageToBeCroppedRule
+  NewImageToBeCroppedRuleToSmartCropStateMachineConnector:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       PolicyDocument:
@@ -572,7 +570,7 @@ Resources:
               - !Ref SmartCropStateMachine
         Version: '2012-10-17'
       Roles:
-        - !Ref NewImageToBeSmartCroppedToSmartCropStateMachineRole
+        - !Ref NewImageToBeCroppedRuleToSmartCropStateMachineRole
 Transform: AWS::Serverless-2016-10-31
 Outputs:
   RawImagesBucketName:

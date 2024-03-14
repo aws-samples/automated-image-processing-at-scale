@@ -1,0 +1,77 @@
+{
+    "version": "0",
+    "id": "d96e091a-c48e-7c10-9e33-567fc27c8344",
+    "detail-type": "Object Created",
+    "source": "aws.s3",
+    "account": "088483494489",
+    "time": "2024-03-14T21:16:48Z",
+    "region": "us-east-1",
+    "resources": [
+      "arn:aws:s3:::cut-out-images-088483494489"
+    ],
+    "detail": {
+      "version": "0",
+      "bucket": {
+        "name": "cut-out-images-088483494489"
+      },
+      "object": {
+        "key": "Arias_Daniel.png",
+        "size": 10888119,
+        "etag": "2c99072d2997c4cb839347b40226e50e",
+        "sequencer": "0065F3693FE62648AD"
+      },
+      "request-id": "5VGEV1MSF997XJ17",
+      "requester": "088483494489",
+      "source-ip-address": "34.237.250.197",
+      "reason": "PutObject"
+    },
+    "dimensions": {
+      "FaceDetails": [
+        {
+          "BoundingBox": {
+            "Height": 0.35416263,
+            "Left": 0.42939827,
+            "Top": 0.23903911,
+            "Width": 0.1727566
+          },
+          "Confidence": 99.99987,
+          "Landmarks": [
+            {
+              "Type": "eyeLeft",
+              "X": 0.474838,
+              "Y": 0.36388844
+            },
+            {
+              "Type": "eyeRight",
+              "X": 0.5524024,
+              "Y": 0.35752073
+            },
+            {
+              "Type": "mouthLeft",
+              "X": 0.4845575,
+              "Y": 0.49113795
+            },
+            {
+              "Type": "mouthRight",
+              "X": 0.54935926,
+              "Y": 0.48593587
+            },
+            {
+              "Type": "nose",
+              "X": 0.5144655,
+              "Y": 0.4259139
+            }
+          ],
+          "Pose": {
+            "Pitch": 8.122602,
+            "Roll": -3.4354584,
+            "Yaw": -0.68611664
+          },
+          "Quality": {
+            "Brightness": 83.11687,
+            "Sharpness": 97.451645
+          }
+        }
+      ]
+    }
+  }

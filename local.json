@@ -1,0 +1,16 @@
+{
+  "GetSignedUrlFunction": {
+    "CROPPEDIMAGESBUCKET_BUCKET_ARN": "arn:aws:s3:::cropped-images-088483494489",
+    "CROPPEDIMAGESBUCKET_BUCKET_NAME": "cropped-images-088483494489",
+    "RAWIMAGESBUCKET_BUCKET_ARN": "arn:aws:s3:::raw-images-088483494489",
+    "CUTOUTIMAGESBUCKET_BUCKET_NAME": "cut-out-images-088483494489",
+    "RAWIMAGESBUCKET_BUCKET_NAME": "raw-images-088483494489",
+    "CUTOUTIMAGESBUCKET_BUCKET_ARN": "arn:aws:s3:::cut-out-images-088483494489"
+  },
+  "SmartCropFunction": {
+    "CUTOUTIMAGESBUCKET_BUCKET_NAME": "cut-out-images-088483494489",
+    "SMARTCROPPEDIMAGESBUCKET_BUCKET_ARN": "arn:aws:s3:::smart-cropped-images-088483494489",
+    "SMARTCROPPEDIMAGESBUCKET_BUCKET_NAME": "smart-cropped-images-088483494489",
+    "CUTOUTIMAGESBUCKET_BUCKET_ARN": "arn:aws:s3:::cut-out-images-088483494489"
+  }
+}
