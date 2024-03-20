@@ -9,7 +9,10 @@
 						"Bucket.$": "$.detail.bucket.name",
 						"Name.$": "$.detail.object.key"
 					}
-				}
+				},
+				"Attributes": [
+					"ALL"
+				]
 			},
 			"Resource": "arn:aws:states:::aws-sdk:rekognition:detectFaces",
 			"ResultPath": "$.dimensions",
