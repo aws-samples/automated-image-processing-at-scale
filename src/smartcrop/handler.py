@@ -1,100 +1,78 @@
-import boto3
-from PIL import Image
 import io
 import os
-import logging
-import traceback
+import boto3
+from PIL import Image
 
-# Initialize logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-# Initialize the S3 client
 s3_client = boto3.client('s3')
 
-# Global parameters for easy configuration
-BOUNDARY_WIDTH = 818
-BOUNDARY_HEIGHT = 1037
-DISTANCE_FROM_TOP = 532
-CANVAS_WIDTH = 3200
-CANVAS_HEIGHT = 2450
+def download_image(bucket, key):
+    """Download an image from S3 and return a PIL Image object."""
+    download_path = f'/tmp/{key}'
+    s3_client.download_file(bucket, key, download_path)
+    return Image.open(download_path)
 
-def fetch_image(bucket_name, object_key):
-    """Fetch an image from an S3 bucket."""
-    try:
-        file_byte_string = s3_client.get_object(Bucket=bucket_name, Key=object_key)['Body'].read()
-        return Image.open(io.BytesIO(file_byte_string))
-    except boto3.exceptions.Boto3Error as e:
-        logger.error(f"Error fetching image from {bucket_name}/{object_key}: {e}")
-        raise
+def upload_image(image, object_key):
+    """Upload an image to the specified S3 bucket using an in-memory bytes buffer."""
+    target_bucket = os.environ['SMARTCROPPEDIMAGESBUCKET_BUCKET_NAME']
+    output_buffer = io.BytesIO()
+    image.save(output_buffer, format='PNG')
+    output_buffer.seek(0)
+    s3_client.put_object(Bucket=target_bucket, Key=object_key, Body=output_buffer, ContentType='image/png')
 
 def process_image(image, landmarks):
-    """Process the image based on eye positions and nose location."""
-    try:
-        width, height = image.size
-        has_alpha = image.mode == 'RGBA'
+    canvas_width, canvas_height = 3200, 2450
+    target_eye_distance = 170
+    target_eye_level = 988
 
-        # Extract landmark positions
-        left_eye_right_x = landmarks['leftEyeRight']['X'] * width
-        left_eye_right_y = landmarks['leftEyeRight']['Y'] * height
-        right_eye_left_x = landmarks['rightEyeLeft']['X'] * width
-        right_eye_left_y = landmarks['rightEyeLeft']['Y'] * height
-        left_eye_up_y = landmarks['leftEyeUp']['Y'] * height
-        left_eye_down_y = landmarks['leftEyeDown']['Y'] * height
-        nose_left_x = landmarks['noseLeft']['X'] * width
-        nose_right_x = landmarks['noseRight']['X'] * width
+    # Extract eye landmark positions
+    left_eye_right = next(item for item in landmarks if item['Type'] == 'leftEyeRight')
+    right_eye_left = next(item for item in landmarks if item['Type'] == 'rightEyeLeft')
 
-        # Calculate the distance between the eyes and the desired scale factor
-        eye_distance = right_eye_left_x - left_eye_right_x
-        scale_factor = 170 / eye_distance  # 170 pixels is the desired distance between the eyes
+    # Calculate the initial scale factor for the eye distance
+    eye_distance = (right_eye_left['X'] - left_eye_right['X']) * image.width
+    scale_factor = target_eye_distance / eye_distance
 
-        # Scale the image
-        new_width = int(width * scale_factor)
-        new_height = int(height * scale_factor)
-        scaled_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    # Apply the initial scaling
+    new_width = int(image.width * scale_factor)
+    new_height = int(image.height * scale_factor)
+    resized_image = image.resize((new_width, new_height), Image.LANCZOS)
 
-        # Calculate new positions after scaling
-        new_nose_center_x = ((nose_left_x + nose_right_x) / 2) * scale_factor
-        new_left_eye_center_y = ((left_eye_up_y + left_eye_down_y) / 2) * scale_factor
+    # Calculate the eye center position after initial scaling
+    avg_eye_y_scaled = (((left_eye_right['Y'] + right_eye_left['Y']) / 2) * new_height)
+    image_top = target_eye_level - int(avg_eye_y_scaled)
 
-        # Calculate offsets to center the image horizontally and adjust the center of the left eye vertically
-        offset_x = (CANVAS_WIDTH / 2) - new_nose_center_x
-        offset_y = 988 - new_left_eye_center_y
+    # Adjust scaling if the image doesn't reach the canvas bottom
+    if image_top + new_height < canvas_height:
+        # Calculate the additional scale factor required
+        additional_scale_factor = ((canvas_height - target_eye_level) + avg_eye_y_scaled) / new_height
+        new_width = int(image.width * additional_scale_factor)
+        new_height = int(image.height * additional_scale_factor)
+        resized_image = resized_image.resize((new_width, new_height), Image.LANCZOS)
+        
+        # Recalculate the eye position and image top after additional scaling
+        avg_eye_y_scaled = (((left_eye_right['Y'] + right_eye_left['Y']) / 2) * new_height)
+        image_top = target_eye_level - int(avg_eye_y_scaled)
 
-        # Create a new transparent canvas and paste the scaled image
-        canvas = Image.new('RGBA', (CANVAS_WIDTH, CANVAS_HEIGHT), (255, 255, 255, 0))
-        canvas.paste(scaled_image, (int(offset_x), int(offset_y)), scaled_image if has_alpha else None)
+    # Center the image horizontally
+    eye_center_x_scaled = ((left_eye_right['X'] + right_eye_left['X']) / 2) * new_width
+    image_left = (canvas_width // 2) - int(eye_center_x_scaled)
 
-        return canvas
-    except Exception as e:
-        logger.error(f"Error processing image: {e}")
-        raise
+    # Create a new canvas and paste the resized image
+    canvas = Image.new('RGBA', (canvas_width, canvas_height), (255, 255, 255, 0))
+    canvas.paste(resized_image, (int(image_left), int(image_top)), resized_image)
 
-def save_to_s3(image, bucket_name, object_key):
-    """Save the processed image to an S3 bucket."""
-    try:
-        output_buffer = io.BytesIO()
-        image.save(output_buffer, format='PNG', dpi=(300, 300))
-        output_buffer.seek(0)
-        s3_client.put_object(Bucket=bucket_name, Key=object_key, Body=output_buffer, ContentType='image/png')
-    except boto3.exceptions.Boto3Error as e:
-        logger.error(f"Error saving image to {bucket_name}/{object_key}: {e}")
-        raise
+    return canvas
 
 def handler(event, context):
-    """AWS Lambda handler function."""
     try:
-        logger.info("Handler started")
         source_bucket = event['detail']['bucket']['name']
         object_key = event['detail']['object']['key']
-        target_bucket = os.environ['SMARTCROPPEDIMAGESBUCKET_BUCKET_NAME']
+        landmarks = event['dimensions']['FaceDetails'][0]['Landmarks']
 
-        image = fetch_image(source_bucket, object_key)
-        landmarks = {lm['Type']: {'X': lm['X'], 'Y': lm['Y']} for lm in event['dimensions']['FaceDetails'][0]['Landmarks']}
+        image = download_image(source_bucket, object_key)
         processed_image = process_image(image, landmarks)
-        save_to_s3(processed_image, target_bucket, object_key)
+        upload_image(processed_image, object_key)
 
-        return {'status': 'SUCCESS'}
+        return {'status': 'success', 'body': 'Image processing and upload successful'}
     except Exception as e:
-        logger.error(f"Unhandled exception in handler: {traceback.format_exc()}")
-        return {'status': 'FAILURE', 'error': str(e)}
+        return {'status': 'fail', 'error': str(e)}
