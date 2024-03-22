@@ -7,9 +7,10 @@ s3_client = boto3.client('s3')
 
 def download_image(bucket, key):
     """Download an image from S3 and return a PIL Image object."""
-    download_path = f'/tmp/{key}'
-    s3_client.download_file(bucket, key, download_path)
-    return Image.open(download_path)
+    image_buffer = io.BytesIO()
+    s3_client.download_fileobj(Bucket=bucket, Key=key, Fileobj=image_buffer)
+    image_buffer.seek(0)
+    return Image.open(image_buffer)
 
 def upload_image(image, object_key):
     """Upload an image to the specified S3 bucket using an in-memory bytes buffer."""
