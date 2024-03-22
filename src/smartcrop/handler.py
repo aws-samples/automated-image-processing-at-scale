@@ -16,9 +16,9 @@ def upload_image(image, object_key):
     """Upload an image to the specified S3 bucket using an in-memory bytes buffer."""
     target_bucket = os.environ['SMARTCROPPEDIMAGESBUCKET_BUCKET_NAME']
     output_buffer = io.BytesIO()
-    image.save(output_buffer, format='PNG')
+    image.save(output_buffer, format='JPEG')  # Save as JPEG
     output_buffer.seek(0)
-    s3_client.put_object(Bucket=target_bucket, Key=object_key, Body=output_buffer, ContentType='image/png')
+    s3_client.put_object(Bucket=target_bucket, Key=object_key, Body=output_buffer)  # Removed ContentType parameter
 
 def process_image(image, landmarks):
     canvas_width, canvas_height = 3200, 2450
@@ -44,13 +44,10 @@ def process_image(image, landmarks):
 
     # Adjust scaling if the image doesn't reach the canvas bottom
     if image_top + new_height < canvas_height:
-        # Calculate the additional scale factor required
         additional_scale_factor = ((canvas_height - target_eye_level) + avg_eye_y_scaled) / new_height
         new_width = int(image.width * additional_scale_factor)
         new_height = int(image.height * additional_scale_factor)
         resized_image = resized_image.resize((new_width, new_height), Image.LANCZOS)
-        
-        # Recalculate the eye position and image top after additional scaling
         avg_eye_y_scaled = (((left_eye_right['Y'] + right_eye_left['Y']) / 2) * new_height)
         image_top = target_eye_level - int(avg_eye_y_scaled)
 
@@ -58,9 +55,9 @@ def process_image(image, landmarks):
     eye_center_x_scaled = ((left_eye_right['X'] + right_eye_left['X']) / 2) * new_width
     image_left = (canvas_width // 2) - int(eye_center_x_scaled)
 
-    # Create a new canvas and paste the resized image
-    canvas = Image.new('RGBA', (canvas_width, canvas_height), (255, 255, 255, 0))
-    canvas.paste(resized_image, (int(image_left), int(image_top)), resized_image)
+    # Create a new canvas in 'RGB' mode and paste the resized image
+    canvas = Image.new('RGB', (canvas_width, canvas_height), (255, 255, 255))
+    canvas.paste(resized_image, (int(image_left), int(image_top)))
 
     return canvas
 

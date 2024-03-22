@@ -6,7 +6,7 @@
 			"Parameters": {
 				"downloadBucket.$": "$.detail.bucket.name",
 				"downloadKey.$": "$.detail.object.key",
-				"uploadBucket": "${croppedImages}"
+				"uploadBucket": "${cutoutImages}"
 			},
 			"Next": "Get Signed Url"
 		},
@@ -31,36 +31,30 @@
 					"BackoffRate": 2
 				}
 			],
-			"Next": "Call Adobe Crop API"
+			"Next": "Call Adobe Cut Out API"
 		},
-		"Call Adobe Crop API": {
+		"Call Adobe Cut Out API": {
 			"Type": "Task",
 			"Resource": "arn:aws:states:::http:invoke",
 			"Parameters": {
-				"ApiEndpoint": "https://image.adobe.io/pie/psdService/productCrop",
+				"ApiEndpoint": "https://image.adobe.io/sensei/cutout",
 				"Method": "POST",
 				"Authentication": {
 					"ConnectionArn": "${adobeConnection}"
 				},
 				"RequestBody": {
-					"inputs": [
-						{
-							"storage": "external",
-							"href.$": "$.downloadUrl"
-						}
-					],
-					"options": {
-						"unit": "Pixels",
-						"width": 10,
-						"height": 10
+					"input": {
+						"storage": "external",
+						"href.$": "$.downloadUrl"
 					},
-					"outputs": [
-						{
-							"storage": "external",
-							"type": "image/png",
-							"href.$": "$.uploadUrl"
+					"output": {
+						"storage": "external",
+						"type": "image/png",
+						"href.$": "$.uploadUrl",
+						"mask": {
+							"format": "soft"
 						}
-					]
+					}
 				}
 			},
 			"Retry": [
