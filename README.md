@@ -1,5 +1,5 @@
 # Automated image processing at scale
-This application uses AWS Serverless and Adobe API endpoints to automate image manipulation at scale. It was designed to process player photos for sporting industries but can be modified for many other uses. When images are dropped into the raw-image bucket they are sent to Adobe to have the background removed and run an auto crop process to reduce the image to just the subject. We then use Rekognition to identify the face of the player and crop the photo according to the desired height of the body. The result is uniform sizing across all the images.
+This application uses AWS Serverless and Adobe API endpoints to automate image manipulation at scale. It was designed to process player photos for sporting industries but can be modified for many other uses. When images are dropped into the raw-image bucket they are sent to Adobe to have the background removed. We then use Rekognition to identify the facial landmarks of the player and crop the photo according to the desired height of the body. The result is uniform sizing across all the images.
 
 The entire process is event driven. When images are furst dropped in the RawImagesBucket, this triggers the CutOutStateMachine to call the Adobe API to process the image. The updated image is then dropped in the CutOutImagesBucket which triggers the next step and so on.
 
@@ -18,7 +18,6 @@ The entire process is event driven. When images are furst dropped in the RawImag
 
 **Adobe APIs used**
 * Adobe Photoshop CutOut API
-* Adobe Photoshop Crop API
 
 ## Preparing to install
 
@@ -36,14 +35,21 @@ The entire process is event driven. When images are furst dropped in the RawImag
 1. Retrieve the ClientId, Client Secret, and Organization ID from the Credentials (Oauth server to server) section
 
 **AWS**
-1. Create a secret in AWS Secrets Manager called `aip/oauth` with the following information:
-    ```
-    {
-        "client_id":"<Adobe client id>>",
-        "client_secret":"<Adobe client secret",
-        "org_id":"<Adobe org id>"
-    }
-    ```
+1. In the Amazon EventBridge console, create a new connection with the following information.
+    * Authorization type: OAuth Client Credentials
+    * Authorization endpoint: https://ims-na1.adobelogin.com/ims/token/v3
+    * Http method: POST
+    * Client Id: `Client ID from Adobe`
+    * Client Secret: `Client Secret from Adobe`
+    * Under *Invocation Http Parameters*
+        * x-api-key (Secret header): `Client ID from Adobe`
+        * x-gw-ims-org-id (Secret header): `Organization ID from Adobe`
+    * Under *OAuth Http Parameters*
+        * grant_type (Body field): client credentials
+        * scope (Body field): openid, AdobeID, read_organizations
+
+    *Once you have an authorized connection, copy the ARN for the next steps*
+
 1. From within the root of the project, build the stack using AWS SAM (--use-container tells SAM to build using containers instead of you having to configure node and python.)
     ```
     sam build --use-container
@@ -54,6 +60,7 @@ The entire process is event driven. When images are furst dropped in the RawImag
     ```
     * Choose your desired stack name
     * Choose your region
+    * Enter the ARN from your connection
     * take defaults for the rest
 
 ## Testing the service
@@ -68,7 +75,6 @@ The stack will also output the list of buckets for your files. It will look simi
 Copy as many raw images into the RawImagesBucket as you like. Each one will run through the entire process.
 
 1. Background removed: saved to CutOutImagesBucket
-1. Image cropped: saved to the CroppedImagesBucket
 1. Image smart cropped: saved to the SmartCroppedBucket
 
 ## Tear down
