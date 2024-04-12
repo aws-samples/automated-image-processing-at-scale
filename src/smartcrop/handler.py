@@ -22,44 +22,48 @@ def upload_image(image, object_key):
 
 def process_image(image, landmarks):
     canvas_width, canvas_height = 3200, 2450
-    target_eye_distance = 170
     target_eye_level = 988
 
-    # Extract eye landmark positions
-    left_eye_right = next(item for item in landmarks if item['Type'] == 'leftEyeRight')
-    right_eye_left = next(item for item in landmarks if item['Type'] == 'rightEyeLeft')
+    # Extract the eye positions from the landmarks data
+    left_eye = next((item for item in landmarks if item['Type'] == 'leftEyeRight'), None)
+    right_eye = next((item for item in landmarks if item['Type'] == 'rightEyeLeft'), None)
 
-    # Calculate the initial scale factor for the eye distance
-    eye_distance = (right_eye_left['X'] - left_eye_right['X']) * image.width
-    scale_factor = target_eye_distance / eye_distance
+    if not left_eye or not right_eye:
+        raise ValueError("Required landmarks 'leftEyeRight' and 'rightEyeLeft' not found")
 
-    # Apply the initial scaling
+    # Calculate the midpoint between the eyes
+    eye_midpoint_x = (left_eye['X'] + right_eye['X']) / 2
+    eye_midpoint_y = (left_eye['Y'] + right_eye['Y']) / 2
+
+    # The distance from the eye level to the bottom of the canvas
+    distance_to_bottom = canvas_height - target_eye_level
+
+    # Calculate the scale factor needed so that the distance from the average eye level to the bottom of the image
+    # after scaling is equal to the distance_to_bottom
+    current_eye_level_from_bottom = (1 - eye_midpoint_y) * image.height
+    scale_factor = distance_to_bottom / current_eye_level_from_bottom
+
+    # Scale the image
     new_width = int(image.width * scale_factor)
     new_height = int(image.height * scale_factor)
-    resized_image = image.resize((new_width, new_height), Image.LANCZOS)
+    scaled_image = image.resize((new_width, new_height), Image.LANCZOS)
 
-    # Calculate the eye center position after initial scaling
-    avg_eye_y_scaled = (((left_eye_right['Y'] + right_eye_left['Y']) / 2) * new_height)
-    image_top = target_eye_level - int(avg_eye_y_scaled)
+    # Recalculate the midpoint between the eyes after scaling
+    eye_midpoint_x_scaled = eye_midpoint_x * new_width
 
-    # Adjust scaling if the image doesn't reach the canvas bottom
-    if image_top + new_height < canvas_height:
-        additional_scale_factor = ((canvas_height - target_eye_level) + avg_eye_y_scaled) / new_height
-        new_width = int(image.width * additional_scale_factor)
-        new_height = int(image.height * additional_scale_factor)
-        resized_image = resized_image.resize((new_width, new_height), Image.LANCZOS)
-        avg_eye_y_scaled = (((left_eye_right['Y'] + right_eye_left['Y']) / 2) * new_height)
-        image_top = target_eye_level - int(avg_eye_y_scaled)
+    # Calculate horizontal offset to center the image on the canvas
+    offset_x = (canvas_width / 2) - eye_midpoint_x_scaled
 
-    # Center the image horizontally
-    eye_center_x_scaled = ((left_eye_right['X'] + right_eye_left['X']) / 2) * new_width
-    image_left = (canvas_width // 2) - int(eye_center_x_scaled)
+    # Calculate vertical offset to place the eyes at the target eye level from the top of the canvas
+    offset_y = target_eye_level - (eye_midpoint_y * new_height)
 
-    # Create a new canvas in 'RGB' mode and paste the resized image
-    canvas = Image.new('RGB', (canvas_width, canvas_height), (255, 255, 255))
-    canvas.paste(resized_image, (int(image_left), int(image_top)))
+    # Create a new canvas and paste the resized image onto it
+    canvas = Image.new('RGB', (canvas_width, canvas_height), 'white')
+    canvas.paste(scaled_image, (int(offset_x), int(offset_y)))
 
     return canvas
+
+
 
 def handler(event, context):
     try:
