@@ -23,6 +23,7 @@ def upload_image(image, object_key):
 def process_image(image, landmarks):
     canvas_width, canvas_height = 3200, 2450
     target_eye_level = 988
+    min_eye_distance = 50  # Minimum distance in pixels between the eyes
 
     # Extract the eye positions from the landmarks data
     left_eye = next((item for item in landmarks if item['Type'] == 'leftEyeRight'), None)
@@ -31,17 +32,23 @@ def process_image(image, landmarks):
     if not left_eye or not right_eye:
         raise ValueError("Required landmarks 'leftEyeRight' and 'rightEyeLeft' not found")
 
-    # Calculate the midpoint between the eyes
+    # Calculate the midpoint and distance between the eyes
     eye_midpoint_x = (left_eye['X'] + right_eye['X']) / 2
     eye_midpoint_y = (left_eye['Y'] + right_eye['Y']) / 2
+    original_eye_distance = abs(right_eye['X'] - left_eye['X']) * image.width
 
-    # The distance from the eye level to the bottom of the canvas
+    # Scale factor based on eye distance
+    scale_factor_distance = min_eye_distance / original_eye_distance
+
+    # Distance from the eye level to the bottom of the canvas
     distance_to_bottom = canvas_height - target_eye_level
 
-    # Calculate the scale factor needed so that the distance from the average eye level to the bottom of the image
-    # after scaling is equal to the distance_to_bottom
+    # Scale factor based on vertical positioning
     current_eye_level_from_bottom = (1 - eye_midpoint_y) * image.height
-    scale_factor = distance_to_bottom / current_eye_level_from_bottom
+    scale_factor_vertical = distance_to_bottom / current_eye_level_from_bottom
+
+    # Use the larger scale factor to satisfy both conditions
+    scale_factor = max(scale_factor_distance, scale_factor_vertical)
 
     # Scale the image
     new_width = int(image.width * scale_factor)
@@ -62,8 +69,6 @@ def process_image(image, landmarks):
     canvas.paste(scaled_image, (int(offset_x), int(offset_y)))
 
     return canvas
-
-
 
 def handler(event, context):
     try:
