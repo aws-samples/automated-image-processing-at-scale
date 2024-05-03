@@ -2,11 +2,14 @@ Parameters:
   AdobeConnectionArn:
     Type: String
     Description: The ARN of the Adobe Connection
+  EyeDistance:
+    Type: String
+    Description: The distance between the eyes in pixels
 Resources:
   RawImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub raw-images-${AWS::AccountId}
+      BucketName: !Sub raw-images-2-${AWS::AccountId}
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
@@ -49,7 +52,7 @@ Resources:
   CutOutImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub cut-out-images-${AWS::AccountId}
+      BucketName: !Sub cut-out-images-2-${AWS::AccountId}
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
@@ -92,7 +95,7 @@ Resources:
   SmartCroppedImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub smart-cropped-images-${AWS::AccountId}
+      BucketName: !Sub smart-cropped-images-2-${AWS::AccountId}
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
@@ -298,6 +301,7 @@ Resources:
           SMARTCROPPEDIMAGESBUCKET_BUCKET_ARN: !GetAtt SmartCroppedImagesBucket.Arn
           RAWIMAGESBUCKET_BUCKET_NAME: !Ref RawImagesBucket
           RAWIMAGESBUCKET_BUCKET_ARN: !GetAtt RawImagesBucket.Arn
+          EYEDISTANCE: !Ref EyeDistance
       Policies:
         - Statement:
             - Effect: Allow
