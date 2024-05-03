@@ -35,6 +35,17 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
+      CorsConfiguration: 
+        CorsRules: 
+          - AllowedOrigins: 
+              - "*"
+            AllowedMethods: 
+              - GET
+              - PUT
+              - POST
+              - DELETE
+            AllowedHeaders: 
+              - "*"
   CutOutImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -67,6 +78,17 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
+      CorsConfiguration: 
+        CorsRules: 
+          - AllowedOrigins: 
+              - "*"
+            AllowedMethods: 
+              - GET
+              - PUT
+              - POST
+              - DELETE
+            AllowedHeaders: 
+              - "*"
   SmartCroppedImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -99,6 +121,17 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
+      CorsConfiguration: 
+        CorsRules: 
+          - AllowedOrigins: 
+              - "*"
+            AllowedMethods: 
+              - GET
+              - PUT
+              - POST
+              - DELETE
+            AllowedHeaders: 
+              - "*"
   GetSignedUrlFunction:
     Type: AWS::Serverless::Function
     Properties:
