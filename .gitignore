@@ -2,3 +2,5 @@
 .aws-composer
 .DS_Store
 samconfig.toml
+local.json
+temp.json
