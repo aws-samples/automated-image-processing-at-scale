@@ -5,6 +5,9 @@ Parameters:
   EyeDistance:
     Type: String
     Description: The distance between the eyes in pixels
+  AllowedDomain:
+    Type: String
+    Description: The domain allowed to access the bucket
 Resources:
   RawImagesBucket:
     Type: AWS::S3::Bucket
@@ -21,6 +24,17 @@ Resources:
       PublicAccessBlockConfiguration:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      CorsConfiguration: 
+        CorsRules: 
+          - AllowedOrigins: 
+              - !Ref AllowedDomain
+            AllowedMethods: 
+              - GET
+              - PUT
+              - POST
+              - DELETE
+            AllowedHeaders: 
+              - "*"
   RawImagesBucketBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -38,17 +52,6 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
-      CorsConfiguration: 
-        CorsRules: 
-          - AllowedOrigins: 
-              - "*"
-            AllowedMethods: 
-              - GET
-              - PUT
-              - POST
-              - DELETE
-            AllowedHeaders: 
-              - "*"
   CutOutImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -64,6 +67,17 @@ Resources:
       PublicAccessBlockConfiguration:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      CorsConfiguration: 
+        CorsRules: 
+          - AllowedOrigins: 
+              - !Ref AllowedDomain
+            AllowedMethods: 
+              - GET
+              - PUT
+              - POST
+              - DELETE
+            AllowedHeaders: 
+              - "*"
   CutOutImagesBucketBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -81,17 +95,6 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
-      CorsConfiguration: 
-        CorsRules: 
-          - AllowedOrigins: 
-              - "*"
-            AllowedMethods: 
-              - GET
-              - PUT
-              - POST
-              - DELETE
-            AllowedHeaders: 
-              - "*"
   SmartCroppedImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -107,6 +110,17 @@ Resources:
       PublicAccessBlockConfiguration:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      CorsConfiguration: 
+        CorsRules: 
+          - AllowedOrigins: 
+              - !Ref AllowedDomain
+            AllowedMethods: 
+              - GET
+              - PUT
+              - POST
+              - DELETE
+            AllowedHeaders: 
+              - "*"
   SmartCroppedImagesBucketBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -124,17 +138,6 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
-      CorsConfiguration: 
-        CorsRules: 
-          - AllowedOrigins: 
-              - "*"
-            AllowedMethods: 
-              - GET
-              - PUT
-              - POST
-              - DELETE
-            AllowedHeaders: 
-              - "*"
   GetSignedUrlFunction:
     Type: AWS::Serverless::Function
     Properties:
