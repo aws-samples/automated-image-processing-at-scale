@@ -45,7 +45,7 @@ The entire process is event driven. When images are furst dropped in the RawImag
         * x-api-key (Secret header): `Client ID from Adobe`
         * x-gw-ims-org-id (Secret header): `Organization ID from Adobe`
     * Under *OAuth Http Parameters*
-        * grant_type (Body field): client credentials
+        * grant_type (Body field): client_credentials
         * scope (Body field): openid, AdobeID, read_organizations
 
     *Once you have an authorized connection, copy the ARN for the next steps*
