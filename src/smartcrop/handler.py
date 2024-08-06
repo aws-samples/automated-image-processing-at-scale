@@ -8,22 +8,28 @@ s3_client = boto3.client('s3')
 def download_image(bucket, key):
     """Download an image from S3 and return a PIL Image object."""
     image_buffer = io.BytesIO()
-    s3_client.download_fileobj(Bucket=bucket, Key=key, Fileobj=image_buffer)
-    image_buffer.seek(0)
-    return Image.open(image_buffer)
+    try:
+        s3_client.download_fileobj(Bucket=bucket, Key=key, Fileobj=image_buffer)
+        image_buffer.seek(0)
+        return Image.open(image_buffer)
+    finally:
+        image_buffer.close()
 
 def upload_image(image, object_key):
     """Upload an image to the specified S3 bucket using an in-memory bytes buffer."""
     target_bucket = os.environ['SMARTCROPPEDIMAGESBUCKET_BUCKET_NAME']
     output_buffer = io.BytesIO()
-    image.save(output_buffer, format='JPEG')  # Save as JPEG
-    output_buffer.seek(0)
-    s3_client.put_object(Bucket=target_bucket, Key=object_key, Body=output_buffer)  # Removed ContentType parameter
+    try:
+        image.save(output_buffer, format='JPEG')  # Save as JPEG
+        output_buffer.seek(0)
+        s3_client.put_object(Bucket=target_bucket, Key=object_key, Body=output_buffer)  # Removed ContentType parameter
+    finally:
+        output_buffer.close()
 
 def process_image(image, landmarks):
     canvas_width, canvas_height = 3200, 2450
     target_eye_level = 988
-    min_eye_distance = int(os.environ['EYEDISTANCE'])
+    min_eye_distance = float(os.environ['EYEDISTANCE'])
 
     # Extract the eye positions from the landmarks data
     left_eye = next((item for item in landmarks if item['Type'] == 'leftEyeRight'), None)
@@ -32,10 +38,16 @@ def process_image(image, landmarks):
     if not left_eye or not right_eye:
         raise ValueError("Required landmarks 'leftEyeRight' and 'rightEyeLeft' not found")
 
+    # Convert landmark coordinates to float
+    left_eye_x = float(left_eye['X'])
+    left_eye_y = float(left_eye['Y'])
+    right_eye_x = float(right_eye['X'])
+    right_eye_y = float(right_eye['Y'])
+
     # Calculate the midpoint and distance between the eyes
-    eye_midpoint_x = (left_eye['X'] + right_eye['X']) / 2
-    eye_midpoint_y = (left_eye['Y'] + right_eye['Y']) / 2
-    original_eye_distance = abs(right_eye['X'] - left_eye['X']) * image.width
+    eye_midpoint_x = (left_eye_x + right_eye_x) / 2
+    eye_midpoint_y = (left_eye_y + right_eye_y) / 2
+    original_eye_distance = abs(right_eye_x - left_eye_x) * image.width
 
     # Scale factor based on eye distance
     scale_factor_distance = min_eye_distance / original_eye_distance
