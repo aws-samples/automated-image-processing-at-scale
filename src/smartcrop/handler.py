@@ -8,23 +8,17 @@ s3_client = boto3.client('s3')
 def download_image(bucket, key):
     """Download an image from S3 and return a PIL Image object."""
     image_buffer = io.BytesIO()
-    try:
-        s3_client.download_fileobj(Bucket=bucket, Key=key, Fileobj=image_buffer)
-        image_buffer.seek(0)
-        return Image.open(image_buffer)
-    finally:
-        image_buffer.close()
+    s3_client.download_fileobj(Bucket=bucket, Key=key, Fileobj=image_buffer)
+    image_buffer.seek(0)
+    return Image.open(image_buffer)
 
 def upload_image(image, object_key):
     """Upload an image to the specified S3 bucket using an in-memory bytes buffer."""
     target_bucket = os.environ['SMARTCROPPEDIMAGESBUCKET_BUCKET_NAME']
     output_buffer = io.BytesIO()
-    try:
-        image.save(output_buffer, format='JPEG')  # Save as JPEG
-        output_buffer.seek(0)
-        s3_client.put_object(Bucket=target_bucket, Key=object_key, Body=output_buffer)  # Removed ContentType parameter
-    finally:
-        output_buffer.close()
+    image.save(output_buffer, format='JPEG')  # Save as JPEG
+    output_buffer.seek(0)
+    s3_client.put_object(Bucket=target_bucket, Key=object_key, Body=output_buffer)  # Removed ContentType parameter
 
 def process_image(image, landmarks):
     canvas_width, canvas_height = 3200, 2450
