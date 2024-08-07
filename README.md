@@ -24,7 +24,7 @@ The entire process is event driven. When images are furst dropped in the RawImag
 ### Requirements
 * An Adobe developer account https://developer.adobe.com/
 * An AWS account https://aws.amazon.com/free/
-* AWS CLLI https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+* AWS CLI https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 * AWS SAM https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
 * Docker
 
