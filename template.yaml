@@ -400,7 +400,7 @@ Resources:
       DefinitionSubstitutions:
         cutoutImages: !Ref CutOutImagesBucket
         getSignedUrl: !GetAtt GetSignedUrlFunction.Arn
-        adobeConnection: arn:aws:events:us-east-1:088483494489:connection/AdobeConnection2/ad169010-7944-4c35-9aff-75e24482bb26 #!Ref AdobeConnectionArn
+        adobeConnection: !Ref AdobeConnectionArn
       DefinitionUri: workflows/cutout.asl.json
   CutOutStateMachineLogGroup:
     Type: AWS::Logs::LogGroup
