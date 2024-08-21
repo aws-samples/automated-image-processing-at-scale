@@ -23,8 +23,12 @@ def upload_image(image, object_key):
 def process_image(image, landmarks):
     canvas_width, canvas_height = 3200, 2450
     target_eye_level = 988
-    min_eye_distance = float(os.getenv('EYEDISTANCE', 220))
-
+    
+    if os.getenv('EYEDISTANCE') == '':
+        min_eye_distance = float(220)
+    else:
+        min_eye_distance = float(os.getenv('EYEDISTANCE', 220))
+    
     # Extract the eye positions from the landmarks data
     left_eye = next((item for item in landmarks if item['Type'] == 'leftEyeRight'), None)
     right_eye = next((item for item in landmarks if item['Type'] == 'rightEyeLeft'), None)
